@@ -24,7 +24,7 @@ import uvicorn
 load_dotenv()
 
 from .api import build_app
-from .config import Config
+from .config import Config, _is_loopback
 from .supervisor import ChildSpec, Supervisor, configure_logging
 
 logger = logging.getLogger("main")
@@ -290,6 +290,27 @@ def _build_specs(cfg: Config) -> list[ChildSpec]:
                 ],
                 ready_url=f"http://127.0.0.1:{cfg.tts_bind_port}/v1/models",
                 ready_timeout=600.0,
+            )
+        )
+
+    # --- LLM proxy (disables thinking on ollama) --------------------
+    # Runs whenever the LLM backend is local (loopback), regardless of
+    # whether we manage the llama-server binary (ollama runs its own).
+    if _is_loopback(cfg.llama_base_url):
+        specs.append(
+            ChildSpec(
+                name="llm-proxy",
+                argv=[
+                    py, "-m", "local_voice_ai.services.llm_proxy.server",
+                    "--host", "127.0.0.1",
+                    "--port", str(cfg.llama_proxy_port),
+                ],
+                env={
+                    "LLM_PROXY_BACKEND": cfg.llama_base_url.rsplit("/v1", 1)[0],
+                    "LLM_PROXY_MODEL": cfg.llama_model,
+                },
+                ready_url=f"http://127.0.0.1:{cfg.llama_proxy_port}/v1/models",
+                ready_timeout=10.0,
             )
         )
 

@@ -91,6 +91,9 @@ class Config:
     llama_n_gpu_layers: int = 0
     llama_bind_port: int = 11434
     manage_llama: bool = True
+    # LLM proxy (disables thinking on ollama gemma4). When manage_llama is on
+    # and the backend is ollama, this proxy sits in front of it.
+    llama_proxy_port: int = 11435
 
     # --- STT (Nemotron by default) --------------------------------------
     stt_provider: str = "nemotron"  # "nemotron" | "whisper"
@@ -180,6 +183,7 @@ class Config:
             llama_n_gpu_layers=int(os.getenv("LLAMA_N_GPU_LAYERS", str(cls.llama_n_gpu_layers))),
             llama_bind_port=int(os.getenv("LLAMA_BIND_PORT", str(cls.llama_bind_port))),
             manage_llama=_env_bool("MANAGE_LLAMA", _is_loopback(llama_base_url)),
+            llama_proxy_port=int(os.getenv("LLAMA_PROXY_PORT", str(cls.llama_proxy_port))),
             #
             stt_provider=stt_provider,
             stt_base_url=stt_base_url,
@@ -209,11 +213,16 @@ class Config:
 
     def agent_env(self) -> dict[str, str]:
         """Environment variables to pass to the agent worker subprocess."""
+        # When the LLM proxy is running, point the agent at it instead of the
+        # raw ollama/llama-server so thinking is disabled.
+        llama_base = self.llama_base_url
+        if _is_loopback(self.llama_base_url):
+            llama_base = f"http://127.0.0.1:{self.llama_proxy_port}/v1"
         return {
             "LIVEKIT_URL": self.livekit_url,
             "LIVEKIT_API_KEY": self.livekit_api_key,
             "LIVEKIT_API_SECRET": self.livekit_api_secret,
-            "LLAMA_BASE_URL": self.llama_base_url,
+            "LLAMA_BASE_URL": llama_base,
             "LLAMA_MODEL": self.llama_model,
             "LLAMA_API_KEY": self.llama_api_key,
             "STT_PROVIDER": self.stt_provider,
