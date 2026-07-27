@@ -33,12 +33,11 @@ class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
             instructions=(
-                "You are a helpful voice AI assistant. The user is interacting with you via "
-                "voice, even if you perceive the conversation as text. You eagerly assist "
-                "users with their questions by providing information from your extensive "
-                "knowledge. Your responses are concise, to the point, and without any "
-                "emojis, lists, or other special symbols. "
-                "You are curious, friendly, and have a sense of humor."
+                "你是一个乐于助人的语音AI助手。用户通过语音与你交互。"
+                "你热情地用丰富的知识回答用户的问题。你的回答简洁明了，"
+                "不使用任何表情符号、列表或其他特殊符号。"
+                "你充满好奇心、友好，并且有幽默感。"
+                "请始终用中文回复。"
             ),
         )
 
@@ -76,6 +75,7 @@ async def my_agent(ctx: JobContext) -> None:
     # The agent's Rust RTC engine can't complete the WebSocket handshake over the
     # tailscale/LAN IP, so rewrite the host to localhost for signaling.
     info = ctx._info  # RunningJobInfo
+    logger.info("job assignment url: %s", info.url)
     if info.url:
         from urllib.parse import urlparse, urlunparse
         parsed = urlparse(info.url)
@@ -144,16 +144,14 @@ async def my_agent(ctx: JobContext) -> None:
         session.input.set_audio_enabled(True)
         session.generate_reply(
             instructions=(
-                "You just woke up because the user said the wake phrase. "
-                "Greet them very briefly and ask how you can help."
+                "你刚被唤醒。简短地跟用户打个招呼，问问能帮什么忙。"
             )
         )
     else:
         # Speak first so the user knows the audio path works.
         session.generate_reply(
             instructions=(
-                "Greet the user warmly in one short sentence and invite them "
-                "to ask you anything."
+                "用一句话热情地跟用户打招呼，邀请他们提问。请用中文。"
             )
         )
 

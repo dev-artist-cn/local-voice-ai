@@ -37,6 +37,11 @@ ml = [
     "nemo-toolkit[asr]",
     "kokoro>=0.9",
     "huggingface_hub",
+    # Kokoro Chinese (Mandarin) G2P deps (misaki/zh.py)
+    "ordered_set",
+    "pypinyin",
+    "cn2an",
+    "jieba",
 ]
 # Whisper fallback (faster-whisper) — only when STT_PROVIDER=whisper.
 # (vox-box was unusable here: it pins aiofiles==23.2.1, which conflicts with

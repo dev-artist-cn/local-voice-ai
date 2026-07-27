@@ -69,7 +69,7 @@ class Supervisor:
         if not self._children:
             return
 
-        self._http = httpx.AsyncClient(timeout=httpx.Timeout(2.0))
+        self._http = httpx.AsyncClient(timeout=httpx.Timeout(2.0), trust_env=False)
 
         # Spawn all children in parallel; each one's readiness wait is independent.
         await asyncio.gather(*(self._start(child) for child in self._children))
@@ -133,6 +133,13 @@ class Supervisor:
 
     async def _start(self, child: _Child) -> None:
         env = {**os.environ, **child.spec.env}
+        # Strip proxy env vars: the Rust RTC engine (livekit-ffi) routes ALL
+        # connections through all_proxy without respecting no_proxy, which breaks
+        # WebSocket handshakes to localhost services. All children here talk to
+        # 127.0.0.1 anyway, so direct connections are correct.
+        for key in list(env.keys()):
+            if key.lower() in ("all_proxy", "http_proxy", "https_proxy"):
+                del env[key]
         logger.info("[%s] starting: %s", child.spec.name, " ".join(child.spec.argv))
         child.process = await asyncio.create_subprocess_exec(
             *child.spec.argv,
