@@ -16,8 +16,12 @@ import logging
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
+from dotenv import load_dotenv
 import uvicorn
+
+load_dotenv()
 
 from .api import build_app
 from .config import Config
@@ -168,6 +172,26 @@ def _build_specs(cfg: Config) -> list[ChildSpec]:
             )
         )
 
+        # WSS proxy: wraps livekit-server websocket in TLS
+        if cfg.livekit_external_url and cfg.livekit_external_url.startswith("wss://"):
+            wss_proxy_port = urlparse(cfg.livekit_external_url).port or 7880
+            specs.append(
+                ChildSpec(
+                    name="wss-proxy",
+                    argv=[
+                        py, "-m", "local_voice_ai.wss_proxy",
+                    ],
+                    env={
+                        "WSS_PROXY_LISTEN_PORT": str(wss_proxy_port),
+                        "WSS_PROXY_BACKEND_PORT": str(cfg.livekit_bind_port),
+                        "SSL_CERTFILE": cfg.ssl_certfile or "cert.pem",
+                        "SSL_KEYFILE": cfg.ssl_keyfile or "key.pem",
+                    },
+                    ready_url=None,
+                    ready_timeout=10.0,
+                )
+            )
+
     # --- llama.cpp server (C++ binary) -------------------------------
     if cfg.manage_llama:
         llama_bin = os.getenv("LLAMA_BIN", "llama-server")
@@ -301,6 +325,8 @@ async def _serve(cfg: Config) -> int:
         port=cfg.web_port,
         log_level=cfg.log_level.lower(),
         access_log=False,
+        ssl_certfile=cfg.ssl_certfile,
+        ssl_keyfile=cfg.ssl_keyfile,
     )
     uv_server = uvicorn.Server(uv_config)
 

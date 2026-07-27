@@ -52,7 +52,7 @@ def _mint_token(cfg: Config, agent_name: str | None) -> dict[str, Any]:
         )
 
     return {
-        "serverUrl": cfg.livekit_url,
+        "serverUrl": cfg.livekit_external_url or cfg.livekit_url,
         "roomName": room_name,
         "participantName": participant_name,
         "participantToken": token.to_jwt(),

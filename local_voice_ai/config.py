@@ -48,9 +48,14 @@ class Config:
     web_host: str = "0.0.0.0"
     web_port: int = 8080
     frontend_dir: Optional[str] = None  # path to a Next.js static export dir
+    ssl_certfile: Optional[str] = None  # path to TLS certificate for HTTPS
+    ssl_keyfile: Optional[str] = None   # path to TLS key for HTTPS
 
     # --- LiveKit ---------------------------------------------------------
     livekit_url: str = "ws://127.0.0.1:7880"
+    # External URL returned to browsers via /api/connection-details.
+    # Defaults to livekit_url when not set.
+    livekit_external_url: str = ""
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
     livekit_bind_port: int = 7880
@@ -62,6 +67,8 @@ class Config:
     # running the server on a remote host reached over the network.
     livekit_node_ip: str = "127.0.0.1"
     manage_livekit: bool = True
+    livekit_tls_cert: Optional[str] = None  # TLS cert for livekit-server
+    livekit_tls_key: Optional[str] = None   # TLS key for livekit-server
 
     # --- LLM (llama.cpp by default) -------------------------------------
     llama_base_url: str = "http://127.0.0.1:11434/v1"
@@ -147,8 +154,11 @@ class Config:
             web_host=os.getenv("WEB_HOST", cls.web_host),
             web_port=int(os.getenv("WEB_PORT", str(cls.web_port))),
             frontend_dir=os.getenv("FRONTEND_DIR"),
+            ssl_certfile=os.getenv("SSL_CERTFILE") or None,
+            ssl_keyfile=os.getenv("SSL_KEYFILE") or None,
             #
             livekit_url=livekit_url,
+            livekit_external_url=os.getenv("LIVEKIT_EXTERNAL_URL", cls.livekit_external_url),
             livekit_api_key=os.getenv("LIVEKIT_API_KEY", cls.livekit_api_key),
             livekit_api_secret=os.getenv("LIVEKIT_API_SECRET", cls.livekit_api_secret),
             livekit_bind_port=int(os.getenv("LIVEKIT_BIND_PORT", str(cls.livekit_bind_port))),
@@ -156,6 +166,8 @@ class Config:
             livekit_udp_port=int(os.getenv("LIVEKIT_UDP_PORT", str(cls.livekit_udp_port))),
             livekit_node_ip=os.getenv("LIVEKIT_NODE_IP", cls.livekit_node_ip),
             manage_livekit=_env_bool("MANAGE_LIVEKIT", _is_loopback(livekit_url)),
+            livekit_tls_cert=os.getenv("LIVEKIT_TLS_CERT") or None,
+            livekit_tls_key=os.getenv("LIVEKIT_TLS_KEY") or None,
             #
             llama_base_url=llama_base_url,
             llama_model=os.getenv("LLAMA_MODEL", cls.llama_model),
