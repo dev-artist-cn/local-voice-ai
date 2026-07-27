@@ -72,6 +72,16 @@ server.setup_fnc = prewarm
 async def my_agent(ctx: JobContext) -> None:
     ctx.log_context_fields = {"room": ctx.room.name}
 
+    # The job assignment URL uses LIVEKIT_NODE_IP (the external IP for WebRTC ICE).
+    # The agent's Rust RTC engine can't complete the WebSocket handshake over the
+    # tailscale/LAN IP, so rewrite the host to localhost for signaling.
+    info = ctx._info  # RunningJobInfo
+    if info.url:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(info.url)
+        if parsed.hostname not in {"127.0.0.1", "localhost"}:
+            info.url = urlunparse(parsed._replace(netloc=f"127.0.0.1:{parsed.port}"))
+
     llama_model = os.getenv("LLAMA_MODEL", "gemma-4-e2b")
     llama_base_url = os.getenv("LLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
     llama_api_key = os.getenv("LLAMA_API_KEY", "no-key-needed")

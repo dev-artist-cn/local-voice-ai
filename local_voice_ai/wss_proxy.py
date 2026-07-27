@@ -18,9 +18,9 @@ logger = logging.getLogger("wss-proxy")
 logging.basicConfig(level=logging.INFO)
 
 LISTEN_HOST = os.getenv("WSS_PROXY_LISTEN_HOST", "0.0.0.0")
-LISTEN_PORT = int(os.getenv("WSS_PROXY_LISTEN_PORT", "7880"))
+LISTEN_PORT = int(os.getenv("WSS_PROXY_LISTEN_PORT", "7443"))
 BACKEND_HOST = os.getenv("WSS_PROXY_BACKEND_HOST", "127.0.0.1")
-BACKEND_PORT = int(os.getenv("WSS_PROXY_BACKEND_PORT", "7883"))
+BACKEND_PORT = int(os.getenv("WSS_PROXY_BACKEND_PORT", "7880"))
 CERTFILE = os.getenv("SSL_CERTFILE", "cert.pem")
 KEYFILE = os.getenv("SSL_KEYFILE", "key.pem")
 
