@@ -131,6 +131,17 @@ class Config:
     # --- Device ---------------------------------------------------------
     device: str = "cpu"  # cpu | cuda | mps
 
+    # --- Auth (phone OTP, demo) -----------------------------------------
+    # HMAC secret for the app-level access tokens handed to the browser.
+    # This is NOT the LiveKit secret. Change AUTH_SECRET in production.
+    auth_secret: str = "dev-auth-secret-change-me"
+    # Demo OTP code (no real SMS is ever sent). Override in production.
+    auth_otp_code: str = "111111"
+    auth_token_ttl_seconds: int = 7 * 24 * 3600  # 7 days
+    # SQLite path for the user table. Defaults to $XDG_CACHE_HOME/auth.db
+    # (i.e. /models/auth.db in Docker, ./auth.db in local dev).
+    auth_db_path: str = ""
+
     # --- Misc -----------------------------------------------------------
     log_level: str = "INFO"
 
@@ -216,6 +227,14 @@ class Config:
             #
             device=os.getenv("DEVICE", cls.device).lower(),
             log_level=os.getenv("LOG_LEVEL", cls.log_level).upper(),
+            #
+            auth_secret=os.getenv("AUTH_SECRET", cls.auth_secret),
+            auth_otp_code=os.getenv("AUTH_OTP_CODE", cls.auth_otp_code),
+            auth_token_ttl_seconds=int(
+                os.getenv("AUTH_TOKEN_TTL", str(cls.auth_token_ttl_seconds))
+            ),
+            auth_db_path=os.getenv("AUTH_DB_PATH")
+            or os.path.join(os.getenv("XDG_CACHE_HOME") or ".", "auth.db"),
         )
 
     def agent_env(self) -> dict[str, str]:

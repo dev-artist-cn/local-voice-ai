@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn[standard]",
     "httpx",
     "pydantic>=2",
+    "pyjwt>=2.0",  # HS256 signing of browser access tokens (phone-OTP auth)
 
     # Nemotron STT (full deps live behind 'stt' extra to avoid forcing torch
     # into every venv during dev)
