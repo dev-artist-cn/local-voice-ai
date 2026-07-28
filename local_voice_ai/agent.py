@@ -22,7 +22,6 @@ from livekit.agents import (
     function_tool,
 )
 from livekit.plugins import openai, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
 
@@ -61,7 +60,8 @@ server = AgentServer()
 
 
 def prewarm(proc: JobProcess) -> None:
-    proc.userdata["vad"] = silero.VAD.load()
+    # Lower min_silence_duration for faster turn detection (default 0.55s)
+    proc.userdata["vad"] = silero.VAD.load(min_silence_duration=0.3)
 
 
 server.setup_fnc = prewarm
@@ -122,9 +122,13 @@ async def my_agent(ctx: JobContext) -> None:
         # pushed". Kokoro ignores the model field, so "tts-1" is purely a
         # protocol selector here.
         tts=openai.TTS(base_url=tts_base_url, model="tts-1", voice=tts_voice, api_key=tts_api_key),
-        turn_detection=MultilingualModel(),
+        # VAD-only turn detection: the MultilingualModel turn detector has
+        # a tokenizer initialization bug in the forked inference process.
+        # VAD-only waits for silence after speech, slightly less smart but
+        # reliable and lower latency since no failing inference is attempted.
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
+        min_endpointing_delay=0.2,
     )
 
     await session.start(agent=Assistant(), room=ctx.room)
