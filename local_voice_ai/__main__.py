@@ -259,6 +259,31 @@ def _build_specs(cfg: Config) -> list[ChildSpec]:
                     ready_timeout=600.0,
                 )
             )
+        elif cfg.stt_provider == "qwen_asr":
+            # Qwen3-ASR needs HuggingFace API access at load time
+            asr_proxy_env = {
+                k: os.environ[k]
+                for k in ("all_proxy", "ALL_PROXY", "http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY")
+                if k in os.environ
+            }
+            specs.append(
+                ChildSpec(
+                    name="qwen-asr",
+                    argv=[
+                        py, "-m", "local_voice_ai.services.qwen_asr.server",
+                        "--host", "127.0.0.1",
+                        "--port", str(cfg.stt_bind_port),
+                    ],
+                    env={
+                        "QWEN_ASR_MODEL": cfg.qwen_asr_model,
+                        "DEVICE": cfg.device,
+                        "HF_HUB_OFFLINE": "0",
+                        **asr_proxy_env,
+                    },
+                    ready_url=f"http://127.0.0.1:{cfg.stt_bind_port}/health",
+                    ready_timeout=600.0,
+                )
+            )
         else:
             specs.append(
                 ChildSpec(
@@ -278,20 +303,67 @@ def _build_specs(cfg: Config) -> list[ChildSpec]:
                 )
             )
 
-    # --- TTS (Kokoro) ------------------------------------------------
+    # --- TTS (Kokoro or CosyVoice2) --------------------------------
     if cfg.manage_tts:
-        specs.append(
-            ChildSpec(
-                name="kokoro",
-                argv=[
-                    py, "-m", "local_voice_ai.services.kokoro.server",
-                    "--host", "127.0.0.1",
-                    "--port", str(cfg.tts_bind_port),
-                ],
-                ready_url=f"http://127.0.0.1:{cfg.tts_bind_port}/v1/models",
-                ready_timeout=600.0,
+        if cfg.tts_provider == "cosyvoice":
+            specs.append(
+                ChildSpec(
+                    name="cosyvoice",
+                    argv=[
+                        py, "-m", "local_voice_ai.services.cosyvoice.server",
+                        "--host", "127.0.0.1",
+                        "--port", str(cfg.tts_bind_port),
+                    ],
+                    env={
+                        "COSYVOICE_MODEL_DIR": os.getenv("COSYVOICE_MODEL_DIR", ""),
+                        "COSYVOICE_PROMPT_WAV": os.getenv("COSYVOICE_PROMPT_WAV", ""),
+                        "COSYVOICE_PROMPT_TEXT": os.getenv("COSYVOICE_PROMPT_TEXT", ""),
+                        "DEVICE": cfg.device,
+                    },
+                    ready_url=f"http://127.0.0.1:{cfg.tts_bind_port}/v1/models",
+                    ready_timeout=600.0,
+                )
             )
-        )
+        elif cfg.tts_provider == "qwen_tts":
+            # Qwen3-TTS needs HuggingFace API access at load time, so keep
+            # proxy env vars (the supervisor strips them by default).
+            proxy_env = {
+                k: os.environ[k]
+                for k in ("all_proxy", "ALL_PROXY", "http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY")
+                if k in os.environ
+            }
+            specs.append(
+                ChildSpec(
+                    name="qwen-tts",
+                    argv=[
+                        py, "-m", "local_voice_ai.services.qwen_tts.server",
+                        "--host", "127.0.0.1",
+                        "--port", str(cfg.tts_bind_port),
+                    ],
+                    env={
+                        "QWEN_TTS_MODEL": os.getenv("QWEN_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"),
+                        "QWEN_TTS_SPEAKER": os.getenv("QWEN_TTS_SPEAKER", "Vivian"),
+                        "QWEN_TTS_LANGUAGE": os.getenv("QWEN_TTS_LANGUAGE", "Auto"),
+                        "HF_HUB_OFFLINE": "0",  # qwen_tts needs HF API at load time
+                        **proxy_env,
+                    },
+                    ready_url=f"http://127.0.0.1:{cfg.tts_bind_port}/v1/models",
+                    ready_timeout=600.0,
+                )
+            )
+        else:
+            specs.append(
+                ChildSpec(
+                    name="kokoro",
+                    argv=[
+                        py, "-m", "local_voice_ai.services.kokoro.server",
+                        "--host", "127.0.0.1",
+                        "--port", str(cfg.tts_bind_port),
+                    ],
+                    ready_url=f"http://127.0.0.1:{cfg.tts_bind_port}/v1/models",
+                    ready_timeout=600.0,
+                )
+            )
 
     # --- LLM proxy (disables thinking on ollama) --------------------
     # Runs whenever the LLM backend is local (loopback), regardless of

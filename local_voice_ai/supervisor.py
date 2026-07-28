@@ -132,14 +132,17 @@ class Supervisor:
     # ---------------- internals ----------------
 
     async def _start(self, child: _Child) -> None:
-        env = {**os.environ, **child.spec.env}
-        # Strip proxy env vars: the Rust RTC engine (livekit-ffi) routes ALL
-        # connections through all_proxy without respecting no_proxy, which breaks
-        # WebSocket handshakes to localhost services. All children here talk to
-        # 127.0.0.1 anyway, so direct connections are correct.
-        for key in list(env.keys()):
-            if key.lower() in ("all_proxy", "http_proxy", "https_proxy"):
-                del env[key]
+        # Strip proxy env vars from the base environment: the Rust RTC engine
+        # (livekit-ffi) routes ALL connections through all_proxy without
+        # respecting no_proxy, which breaks WebSocket handshakes to localhost.
+        # Child specs can still re-add proxy vars in their env dict if needed
+        # (e.g. a service that downloads from HuggingFace).
+        base_env = {
+            k: v
+            for k, v in os.environ.items()
+            if k.lower() not in ("all_proxy", "http_proxy", "https_proxy")
+        }
+        env = {**base_env, **child.spec.env}
         logger.info("[%s] starting: %s", child.spec.name, " ".join(child.spec.argv))
         child.process = await asyncio.create_subprocess_exec(
             *child.spec.argv,

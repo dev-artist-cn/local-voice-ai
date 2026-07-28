@@ -96,7 +96,7 @@ class Config:
     llama_proxy_port: int = 11435
 
     # --- STT (Nemotron by default) --------------------------------------
-    stt_provider: str = "nemotron"  # "nemotron" | "whisper"
+    stt_provider: str = "nemotron"  # "nemotron" | "whisper" | "qwen_asr"
     stt_base_url: str = "http://127.0.0.1:8000/v1"
     stt_model: str = "nemotron-speech-streaming"
     stt_api_key: str = "no-key-needed"
@@ -107,6 +107,9 @@ class Config:
     nemotron_model_name: str = "nvidia/nemotron-speech-streaming-en-0.6b"
     nemotron_model_id: str = "nemotron-speech-streaming"
 
+    # Qwen3-ASR (multilingual, Chinese-capable)
+    qwen_asr_model: str = "Qwen/Qwen3-ASR-1.7B"
+
     # Whisper (faster-whisper) specific
     whisper_model: str = "Systran/faster-whisper-small"
 
@@ -115,6 +118,7 @@ class Config:
     tts_voice: str = "af_nova"
     tts_api_key: str = "no-key-needed"
     tts_bind_port: int = 8880
+    tts_provider: str = "kokoro"  # "kokoro" | "cosyvoice" | "qwen_tts"
     manage_tts: bool = True
 
     # --- Wake word (off by default) --------------------------------------
@@ -150,6 +154,7 @@ class Config:
         default_stt_model = (
             "Systran/faster-whisper-small"
             if stt_provider == "whisper"
+            else "qwen3-asr-1.7b" if stt_provider == "qwen_asr"
             else "nemotron-speech-streaming"
         )
 
@@ -194,6 +199,7 @@ class Config:
             nemotron_model_name=os.getenv("NEMOTRON_MODEL_NAME", cls.nemotron_model_name),
             nemotron_model_id=os.getenv("NEMOTRON_MODEL_ID", cls.nemotron_model_id),
             whisper_model=os.getenv("WHISPER_MODEL", cls.whisper_model),
+            qwen_asr_model=os.getenv("QWEN_ASR_MODEL", cls.qwen_asr_model),
             #
             wake_word=_env_bool("WAKE_WORD", cls.wake_word),
             wake_word_model=os.getenv("WAKE_WORD_MODEL", cls.wake_word_model),
@@ -205,6 +211,7 @@ class Config:
             tts_voice=os.getenv("TTS_VOICE", cls.tts_voice),
             tts_api_key=os.getenv("TTS_API_KEY", cls.tts_api_key),
             tts_bind_port=int(os.getenv("TTS_BIND_PORT", str(cls.tts_bind_port))),
+            tts_provider=os.getenv("TTS_PROVIDER", cls.tts_provider),
             manage_tts=_env_bool("MANAGE_TTS", _is_loopback(tts_base_url)),
             #
             device=os.getenv("DEVICE", cls.device).lower(),
